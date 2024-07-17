@@ -1,8 +1,7 @@
 Package: CleanUpRNAseq
 Type: Package
-Title: CleanUpRNAseq detects and corrects for genomic DNA contamination
-       in RNA-seq data
-Version: 0.99.11
+Title: Detect and Correct Genomic DNA Contamination in RNA-seq Data
+Version: 0.99.12
 Authors@R: c(person("Haibo", "Liu", 
              role = c("aut", "cre"),
              comment=c(ORCID="0000-0002-4213-2883"),
@@ -34,7 +33,7 @@ Depends: R (>= 4.0.0)
 Suggests: BiocManager, rmarkdown, knitr, EnsDb.Hsapiens.v86, ggplotify,
           BiocStyle, R.utils, AnnotationHub, BSgenome.Hsapiens.UCSC.hg38
 VignetteBuilder: knitr
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Roxygen: list(markdown = TRUE)
 Encoding: UTF-8
 LazyData: true

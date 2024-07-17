@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_BSgenome.R
 \name{make_BSgenome}
 \alias{make_BSgenome}
-\title{Create and install a BSgenome package}
+\title{Create a BSgenome package}
 \usage{
 make_BSgenome(
   genome_fasta = NULL,

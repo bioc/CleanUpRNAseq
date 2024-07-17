@@ -695,7 +695,7 @@ check_read_distribution <-
 #' @export
 #' @importFrom methods is
 #' @importFrom graphics smoothScatter
-#' @import KernSmooth
+#' @importFrom KernSmooth bkde2D
 #' @examples
 #' tmp_dir <- tempdir()
 #' options(timeout = max(3000, getOption("timeout")))
@@ -747,7 +747,7 @@ check_sample_correlation <- function(counts = NULL) {
                 cex.cor <- 0.4 / strwidth(txt)
             }
             text(0.5, 0.5, txt,
-                cex = 1 + cex.cor * Cor
+                cex = 0.5 + cex.cor * Cor
             )
         }
 

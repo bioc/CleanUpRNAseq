@@ -459,7 +459,7 @@ forge_BSgenome <-
 
 
 
-#' Create and install a BSgenome package
+#' Create a BSgenome package
 #'
 #' Starting with a multi-fasta file for a reference genome, a BSgenome package
 #' is created and installed. This function is a wrapper function of three

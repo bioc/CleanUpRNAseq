@@ -33,6 +33,7 @@ vignette: |
 ```{r setup, include = FALSE}
 options(timeout = Inf)
 knitr::opts_chunk$set(
+    eval = interactive(),
     message = FALSE,
     warning = FALSE,
     tidy = FALSE,
@@ -100,10 +101,10 @@ functions, create_diagnostic_plots and correct_for_contamination, for detecting
 and correcting for gDNA contamination in RNA-seq data. As for how to use these
 wrappers, please refer to their function documentation.  
 
-```{r loadpackage}
+```{r loadpackage, eval = TRUE}
 suppressPackageStartupMessages({
     library("CleanUpRNAseq")
-    #devtools::load_all("./")
+    #devtools::load_all("../../CleanUpRNAseq")
     library("ggplotify")
     library("R.utils")
     library("patchwork")
@@ -116,7 +117,7 @@ load the package of choice, if available, as follows. Here, an EnsDb package
 for the human genome is loaded. It is crucial to use an EnsDb pacakge which
 represents the genome annotation file (GTF) used for RNA-seq read alignment.
 
-```{r queryannotationhub}
+```{r queryannotationhub, eval=TRUE}
 ## load EnsDb.Hsapiens.v86
 suppressPackageStartupMessages({
     library("EnsDb.Hsapiens.v86")
@@ -132,22 +133,9 @@ quantify gene expression of the example RNA-seq data.
 ```{r createensdb}
 options(timeout = max(3000, getOption("timeout")))
 tmp_dir <- tempdir()
-gtf_url <- paste0(
-    "https://ftp.ensembl.org/pub/release-110/gtf/",
-    "homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz"
-)
-gtf <- basename(gtf_url)
-gtf <- file.path(tmp_dir, gtf)
-
-if (!file.exists(gtf)) {
-    retry_download({download.file(
-        url = gtf_url,
-        destfile = gtf,
-        mode = "wb"
-    )})
-}
-
-hs_ensdb_sqlite <- make_ensdb(
+gtf <- system.file("extdata", "example.gtf.gz",
+                    package = "CleanUpRNAseq")
+hs_ensdb_sqlite_toy <- make_ensdb(
     gtf = gtf,
     outfile = file.path(
         tmp_dir,
@@ -187,9 +175,32 @@ annotation. The junction read count table is used to determine the unexpressed,
 multiexonic genes, while the gene-level read count table is used for comparing
 samples at the gene level. Here two downsampled BAM files are used for speeding
 up the demonstration, while a precomputed R object in the .RData format is 
-used for actual downstream analysis. 
+used for actual downstream analysis.
 
 ```{r featurecount}
+ # download the GTF file
+ gtf_url <- paste0(
+     "https://ftp.ensembl.org/pub/release-110/gtf/",
+     "homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz"
+ )
+ gtf <- basename(gtf_url)
+ tmp_dir <- tempdir()
+ retry_download({download.file(
+     url = gtf_url,
+     destfile = file.path(tmp_dir, gtf),
+     mode = "wb"
+ )})
+
+ # download the SAF file
+ saf_url <- paste0("https://zenodo.org/records/11458839/files/",
+                   "hs_saf_list.RData?download=1")
+ retry_download({download.file(
+     url = saf_url,
+     destfile = file.path(tmp_dir, "hs_saf_list.RData"),
+     mode = "wb"
+ )})
+ load(file.path(tmp_dir, "hs_saf_list.RData"))
+ 
 bams <- system.file("extdata",
     c("K084CD7PCD1N.srt.bam", "K084CD7PCD1P.srt.bam"),
     package = "CleanUpRNAseq"
@@ -200,7 +211,7 @@ metadata <- data.frame(
     BAM_file = bams,
     group = c("CD1AN", "CD1AP")
 )
-gunzip(gtf, remove = FALSE, overwrite = TRUE)
+gunzip(file.path(tmp_dir, gtf), remove = TRUE, overwrite = TRUE)
 
 invisible({
     capture.output({
@@ -209,7 +220,7 @@ invisible({
             isPairedEnd = TRUE,
             strandSpecific = 0,
             saf_list = saf_list,
-            gtf = gsub(".gz", "", gtf),
+            gtf = file.path(tmp_dir, gsub(".gz", "", gtf)),
             threads = 1,
             verbose = FALSE
         )
@@ -255,6 +266,7 @@ p_read_distr <- check_read_distribution(
 )
 print(p_read_distr$p)
 ```
+![Fig 1](./qc1_read_assign_stat.png).
 
 ```{r loadsalmon}
 quant_files <- system.file("extdata",
@@ -290,11 +302,12 @@ load(destfile)
 ```
 
 ```{r} 
-#| samplecorr, fig.height = 8, fig.width = 8, 
+#| samplecorr, fig.height = 8, fig.width = 8,
 #| fig.cap = "Smoothed scatter plot showing pairwise sample correlation"
 
 check_sample_correlation(counts = salmon_quant$counts)
 ```
+![Fig 2](./qc2_corr.png).
 
 ```{r} 
 #| exprdistr, fig.height = 8, fig.width = 5, 
@@ -308,7 +321,7 @@ p_expr_distr <- check_expr_distribution(
 )
 wrap_plots(p_expr_distr, ncol = 1, nrow = 3)
 ```
-
+![Fig 3](./qc3_distribution.png).
 
 ```{r}
 #| exprgene, fig.height = 3, fig.width = 3.5, out.width = "80%", 
@@ -324,9 +337,10 @@ p_expr_genes <-
     )
 print(p_expr_genes)
 ```
+![Fig 4](./qc4_expressed_genes.png).
 
 ```{r}
-#| samplesimilarity, fig.height = 5, fig.width = 10, 
+#| samplesimilarity, fig.height = 5, fig.width = 10,
 #| fig.cap = "PCA score plot and heatmap showing sample similarity"
 
 ## DESeq2 exploratory analysis before correction
@@ -336,6 +350,8 @@ pca_heatmap <- exploratory_analysis(
 )
 pca_heatmap$pca + as.ggplot(pca_heatmap$heatmap)
 ```
+![Fig 5](./qc5_pca_clustering.png).
+
 
 ## Step 5. Correct for DNA contamination
 If the libraries are unstranded, `r Biocpkg("CleanUpRNAseq")` uses a median 
@@ -382,6 +398,6 @@ wrap_plots(p_expr_distr, ncol = 1, nrow = 3)
 # Session info
 Here is the output of `sessionInfo()` on the system on which this document was 
 compiled running pandoc `r rmarkdown::pandoc_version()`:
-```{r sessionInfo, echo = FALSE}
+```{r sessionInfo, eval=TRUE, echo = FALSE}
 sessionInfo()
 ```
