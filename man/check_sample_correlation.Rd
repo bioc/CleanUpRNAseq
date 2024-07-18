@@ -23,20 +23,28 @@ for gene expression of pairwise samples, and the upper triangle showing
 Pearson correlation coefficients of gene expression of pairwise samples.
 }
 \examples{
-tmp_dir <- tempdir()
 options(timeout = max(3000, getOption("timeout")))
-## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
-)
-retry_download({download.file(
-    url = count_url,
-    destfile = file.path(tmp_dir, "read_count_summary.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "read_count_summary.RData"))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
 
-check_sample_correlation(counts = counts_summary$gtf$counts)
+## download feaureCounts results
+if (!exists("counts_summary", envir = cache_env)) {
+    count_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "read_count_summary.RData?download=1"
+    )
+    retry_download({download.file(
+        url = count_url,
+        destfile = file.path(tmp_dir, "read_count_summary.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "read_count_summary.RData"))
+    cache_env$counts_summary <- counts_summary
+}
+
+check_sample_correlation(counts = cache_env$counts_summary$gtf$counts)
 
 }

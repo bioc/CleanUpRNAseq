@@ -49,73 +49,88 @@ of intergenic regions and the total collapsed exons of a gene and is
 subtracted away from the gene count matrix.
 }
 \examples{
-if (interactive()) {
-   options(timeout = max(3000, getOption("timeout")))
-   tmp_dir <- tempdir()
-   ## download feaureCounts results
-   count_url <- paste0(
-       "https://zenodo.org/records/11458839/files/",
-       "read_count_summary.RData?download=1"
-   )
-   retry_download({download.file(
-       url = count_url,
-       destfile = file.path(tmp_dir, "read_count_summary.RData"),
-       mode = "wb"
-   )})
-   load(file.path(tmp_dir, "read_count_summary.RData"))
+\dontshow{if (interactive()) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
 
-   # download the Salmon quantification results
-   salmon_url <- paste0(
-       "https://zenodo.org/records/11458839/files/",
-       "salmon_quant_summary.RData?download=1"
-   )
-   salmon_destfile <- file.path(tmp_dir, "salmon_quant_summary.RData")
-   retry_download({download.file(url = salmon_url,
-                 destfile = salmon_destfile,
-                 mode = "wb")})
+if (!exists("counts_summary", envir = cache_env)) {
+    ## download feaureCounts results
+    count_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "read_count_summary.RData?download=1"
+    )
+    retry_download({download.file(
+        url = count_url,
+        destfile = file.path(tmp_dir, "read_count_summary.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "read_count_summary.RData"))
+    cache_env$counts_summary <- counts_summary
+}
+if (!exists("salmon_quant", envir = cache_env)) {
+    # download the Salmon quantification results
+    salmon_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "salmon_quant_summary.RData?download=1"
+    )
+    salmon_destfile <- file.path(tmp_dir,
+        "salmon_quant_summary.RData")
+    retry_download({download.file(url = salmon_url,
+                  destfile = salmon_destfile,
+                  mode = "wb")})
 
-   ## load the salmon_quant object
-   load(salmon_destfile)
-
-   gene_gc_content_url <-
-       paste0(
+    ## load the salmon_quant object
+    load(salmon_destfile)
+    cache_env$salmon_quant <- salmon_quant
+}
+if (!exists("gene_gc", envir = cache_env)) {
+    gene_gc_content_url <-
+        paste0(
            "https://zenodo.org/records/11458839/files/",
            "GRCh38.gene.exon.collapsed.GC.content.RDS?download=1"
        )
-   gene_gc_destfile <- file.path(tmp_dir,
+    gene_gc_destfile <- file.path(tmp_dir,
                      "GRCh38.gene.exon.collapsed.GC.content.RDS")
-   retry_download({download.file(url = gene_gc_content_url,
-                 destfile = gene_gc_destfile,
-                 mode = "wb")})
+    retry_download({download.file(url = gene_gc_content_url,
+                  destfile = gene_gc_destfile,
+                  mode = "wb")})
 
-   ## load the gene_ object
-   gene_gc <- readRDS(gene_gc_destfile)
-
-   intergenic_gc_content_url <-
-       paste0(
-           "https://zenodo.org/records/11458839/files/",
-           "GRCh38.intergenic.GC.content.RDS?download=1"
-       )
-   intergenic_gc_destfile <- file.path(
-       tmp_dir,
-       "GRCh38.intergenic.GC.content.RDS"
-   )
-   retry_download({download.file(
-       url = intergenic_gc_content_url,
-       destfile = intergenic_gc_destfile,
-       mode = "wb"
-   )})
-
-   ## load the salmon_quant object
-   intergenic_gc <- readRDS(intergenic_gc_destfile)
-   gc_bias_corrected_count <-
-       gc_bias_correction(
-           salmon_res = salmon_quant,
-           gene_gc = gene_gc,
-           intergenic_counts =
-               counts_summary$intergenic_region$counts,
-           intergenic_gc = intergenic_gc,
-           plot = FALSE
-       )
+    ## load the gene_ object
+    gene_gc <- readRDS(gene_gc_destfile)
+    cache_env$gene_gc <- gene_gc
 }
+if (!exists("intergenic_gc", envir = cache_env)) {
+    intergenic_gc_content_url <-
+        paste0(
+               "https://zenodo.org/records/11458839/files/",
+               "GRCh38.intergenic.GC.content.RDS?download=1"
+        )
+    intergenic_gc_destfile <- file.path(
+        tmp_dir,
+        "GRCh38.intergenic.GC.content.RDS"
+    )
+    retry_download({download.file(
+        url = intergenic_gc_content_url,
+        destfile = intergenic_gc_destfile,
+        mode = "wb"
+    )})
+
+    ## load the salmon_quant object
+    intergenic_gc <- readRDS(intergenic_gc_destfile)
+    cache_env$intergenic_gc <- intergenic_gc
+}
+gc_bias_corrected_count <-
+    gc_bias_correction(
+        salmon_res = cache_env$salmon_quant,
+        gene_gc = cache_env$gene_gc,
+        intergenic_counts =
+        cache_env$counts_summary$intergenic_region$counts,
+        intergenic_gc = cache_env$intergenic_gc,
+        plot = FALSE
+    )
+\dontshow{\}) # examplesIf}
 }

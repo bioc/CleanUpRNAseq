@@ -51,23 +51,31 @@ using the svglite package, instead of \code{\link[grDevices:pdf]{grDevices::pdf(
 resolution plot.
 }
 \examples{
-tmp_dir <- tempdir()
 options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+
 ## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
-)
-retry_download({download.file(
-    url = count_url,
-    destfile = file.path(tmp_dir, "read_count_summary.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "read_count_summary.RData"))
+if (!exists("counts_summary", envir = cache_env)) {
+    count_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "read_count_summary.RData?download=1"
+    )
+    retry_download({download.file(
+        url = count_url,
+        destfile = file.path(tmp_dir, "read_count_summary.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "read_count_summary.RData"))
+    cache_env$counts_summary <- counts_summary
+}
 
 p <- check_expressed_gene_percentage(
-    metadata = counts_summary$metadata,
-    counts = counts_summary$gtf$counts,
+    metadata = cache_env$counts_summary$metadata,
+    counts = cache_env$counts_summary$gtf$counts,
     min_cpm = 1
 )
 p

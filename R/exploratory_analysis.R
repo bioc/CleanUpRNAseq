@@ -31,27 +31,33 @@
 #' @importFrom grDevices rainbow
 #' @importFrom stats sd
 #'
-#' @examples
-#' library(patchwork)
+#' @examplesIf require("patchwork")
 #' options(timeout = max(3000, getOption("timeout")))
-#' tmp_dir <- tempdir()
-#' ## download feaureCounts results
-#' count_url <- paste0(
-#'     "https://zenodo.org/records/11458839/files/",
-#'     "read_count_summary.RData?download=1"
-#' )
-#' retry_download({download.file(
-#'     url = count_url,
-#'     destfile = file.path(tmp_dir, "read_count_summary.RData"),
-#'     mode = "wb"
-#' )})
-#' load(file.path(tmp_dir, "read_count_summary.RData"))
+#' cache_env <- getOption("cache_env")
+#' if (!exists("tmp_dir", envir = cache_env)) {
+#'     cache_env$tmp_dir <- tempdir()
+#' }
+#' tmp_dir <- cache_env$tmp_dir
 #'
-#' metadata <- counts_summary$metadata
+#' if (!exists("counts_summary", envir = cache_env)) {
+#'     ## download feaureCounts results
+#'     count_url <- paste0(
+#'         "https://zenodo.org/records/11458839/files/",
+#'         "read_count_summary.RData?download=1"
+#'     )
+#'     retry_download({download.file(
+#'         url = count_url,
+#'         destfile = file.path(tmp_dir, "read_count_summary.RData"),
+#'         mode = "wb"
+#'     )})
+#'     load(file.path(tmp_dir, "read_count_summary.RData"))
+#'     cache_env$counts_summary <- counts_summary
+#' }
+#' metadata <- cache_env$counts_summary$metadata
 #' metadata$group <- gsub("CD1A\\(-\\)", "CD1AN", metadata$group)
 #' metadata$group <- gsub("CD1A\\(\\+\\)", "CD1AP", metadata$group)
 #' p <- exploratory_analysis(
-#'     counts = counts_summary$gtf$counts,
+#'     counts = cache_env$counts_summary$gtf$counts,
 #'     metadata = metadata
 #' )
 #'

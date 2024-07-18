@@ -59,76 +59,89 @@ minimal number of samples are filtered out.
 Filter out unexpressed genes from the count table
 }
 \examples{
-if (interactive()) {
-tmp_dir <- tempdir()
-options(timeout = max(3000, getOption("timeout")))
-## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
-)
-retry_download({download.file(
-    url = count_url,
-    destfile = file.path(tmp_dir, "read_count_summary.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "read_count_summary.RData"))
+\dontshow{if (interactive()) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+op <- options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+
+if (!exists("counts_summary", envir = cache_env)) {
+    count_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "read_count_summary.RData?download=1"
+    )
+    retry_download({download.file(
+        url = count_url,
+        destfile = file.path(tmp_dir, "read_count_summary.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "read_count_summary.RData"))
+    cache_env$counts_summary <- counts_summary
+}
 
 # download the EnsDb SQLite database
-ensdb_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "GRCh38.V110.ensdb.sqlite.zip?download=1"
-)
-retry_download({download.file(
-    url = ensdb_url,
-    destfile = file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
-    mode = "wb"
-)})
-unzip(file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
-    exdir = tmp_dir
-)
-hs_ensdb_sqlite <- file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite")
-
+if (!exists("hs_ensdb_sqlite", envir = cache_env)) {
+    ensdb_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "GRCh38.V110.ensdb.sqlite.zip?download=1"
+    )
+    retry_download({download.file(
+        url = ensdb_url,
+        destfile = file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
+        mode = "wb"
+    )})
+    unzip(file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
+        exdir = tmp_dir
+    )
+    hs_ensdb_sqlite <- file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite")
+    cache_env$hs_ensdb_sqlite <- hs_ensdb_sqlite
+}
 unexpressed_spliced_genes <-
     get_unexpressed_spliced_genes(
-        ensdb_sqlite = hs_ensdb_sqlite,
+        ensdb_sqlite = cache_env$hs_ensdb_sqlite,
         junction_counts =
-            counts_summary$gtf$counts_junction,
+            cache_env$counts_summary$gtf$counts_junction,
         min_junction_counts = 1,
         min_samples = 1
     )
 
 # download the Salmon quantification results
-salmon_url <-
-    paste0("https://zenodo.org/records/11458839/files/",
-    "salmon_quant_summary.RData?download=1")
-destfile <- file.path(tmp_dir, "salmon_quant_summary.RData")
-retry_download({download.file(
-    url = salmon_url,
-    destfile = destfile,
-    mode = "wb"
-)})
+if (!exists("salmon_quant", envir = cache_env)) {
+    salmon_url <-
+        paste0("https://zenodo.org/records/11458839/files/",
+        "salmon_quant_summary.RData?download=1")
+    destfile <- file.path(tmp_dir, "salmon_quant_summary.RData")
+    retry_download({download.file(
+        url = salmon_url,
+        destfile = destfile,
+        mode = "wb"
+    )})
 
-## load the salmon_quant object
-load(destfile)
-
+    ## load the salmon_quant object
+    load(destfile)
+    cache_env$salmon_quant <- salmon_quant
+}
+## global correction
 corrected_counts <- global_correction(
     intergenic_featureCounts_res =
-        counts_summary$intergenic_region,
-    salmon_res = salmon_quant
+        cache_env$counts_summary$intergenic_region,
+    salmon_res = cache_env$salmon_quant
 )
-metadata <- counts_summary$metadata
+metadata <- cache_env$counts_summary$metadata
 contaminated_sample <- c("CD1A(-)_m2_1", "CD1A(-)_m3_1")
 metadata$is_contaminated <- ifelse(metadata$sample_name \%in\%
     contaminated_sample, "TRUE", FALSE)
 filtered_corrected_counts <-
     filter_unexpressed_genes(
         counts = corrected_counts,
-        salmon_res = salmon_quant,
+        salmon_res = cache_env$salmon_quant,
         unexpressed_spliced_genes = unexpressed_spliced_genes,
         metadata = metadata,
         min_tpm = 1,
         min_samples = 1
     )
-}
+options(op)
+\dontshow{\}) # examplesIf}
 }

@@ -54,6 +54,12 @@ Import Salmon quantification output into R using tximport
 }
 \examples{
 options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+
 ## using trucated quant.sf files for demonstration purpose
 quant_files <- system.file("extdata",
     "K084CD7PCD1N.quant.sf",
@@ -67,24 +73,26 @@ metadata <- data.frame(
 )
 
 # download the EnsDb SQLite database: GRCh38.V110.ensdb.sqlite.zip
-tmp_dir <- tempdir()
-ensdb_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "GRCh38.V110.ensdb.sqlite.zip?download=1"
-)
-retry_download({download.file(
-    url = ensdb_url,
-    destfile = file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
-    mode = "wb"
-)})
-unzip(file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
-    exdir = tmp_dir
-)
-hs_ensdb_sqlite <- file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite")
+if (!exists("hs_ensdb_sqlite", envir = cache_env)) {
+    ensdb_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "GRCh38.V110.ensdb.sqlite.zip?download=1"
+    )
+    retry_download({download.file(
+        url = ensdb_url,
+        destfile = file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
+        mode = "wb"
+    )})
+    unzip(file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
+        exdir = tmp_dir
+    )
+    hs_ensdb_sqlite <- file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite")
+    cache_env$hs_ensdb_sqlite <- hs_ensdb_sqlite
+}
 
 salmon_counts <- salmon_res(
     metadata = metadata,
-    ensdb_sqlite = hs_ensdb_sqlite
+    ensdb_sqlite = cache_env$hs_ensdb_sqlite
 )
 
 }

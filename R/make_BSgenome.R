@@ -21,8 +21,7 @@
 #' @importFrom GenomeInfoDb seqnames seqnames<-
 #' @export
 #'
-#' @examples
-#' library("BSgenome.Hsapiens.UCSC.hg38")
+#' @examplesIf require("BSgenome.Hsapiens.UCSC.hg38")
 #' ucsc_BSgenome <- BSgenome.Hsapiens.UCSC.hg38
 #' ucsc_seqnames <-
 #'     seqnames(ucsc_BSgenome)[!grepl("_alt|fix|hap\\d+",

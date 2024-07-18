@@ -36,12 +36,13 @@ StackOverflow with modification:
 https://stackoverflow.com/questions/63340463/download-files-until-it-works.
 }
 \examples{
+op <- options(timeout = max(3000, getOption("timeout")))
 tmp_dir <- tempdir()
-options(timeout = max(3000, getOption("timeout")))
+
 ## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
+count_url <- paste0("https://ftp.ensembl.org/pub/release-112/",
+                   "fasta/mus_musculus/dna/",
+                   "Mus_musculus.GRCm39.dna.chromosome.MT.fa.gz"
 )
 retry_download({download.file(
     url = count_url,

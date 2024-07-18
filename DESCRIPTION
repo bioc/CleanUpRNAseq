@@ -1,7 +1,7 @@
 Package: CleanUpRNAseq
 Type: Package
 Title: Detect and Correct Genomic DNA Contamination in RNA-seq Data
-Version: 0.99.12
+Version: 0.99.13
 Authors@R: c(person("Haibo", "Liu", 
              role = c("aut", "cre"),
              comment=c(ORCID="0000-0002-4213-2883"),

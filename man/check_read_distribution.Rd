@@ -34,19 +34,28 @@ Generate plots showing percentages of fragments assigned to different
 genomic features.
 }
 \examples{
-tmp_dir <- tempdir()
 options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+
 ## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
-)
-retry_download({download.file(
-    url = count_url,
-    destfile = file.path(tmp_dir, "read_count_summary.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "read_count_summary.RData"))
+if (!exists("counts_summary", envir = cache_env)) {
+    count_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "read_count_summary.RData?download=1"
+    )
+    retry_download({download.file(
+        url = count_url,
+        destfile = file.path(tmp_dir, "read_count_summary.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "read_count_summary.RData"))
+    cache_env$counts_summary <- counts_summary
+}
+counts_summary <- cache_env$counts_summary
 metadata <- counts_summary$metadata
 counts_summary$metadata <- NULL
 p <- check_read_distribution(
@@ -54,4 +63,5 @@ p <- check_read_distribution(
     metadata = metadata
 )
 p$p
+
 }

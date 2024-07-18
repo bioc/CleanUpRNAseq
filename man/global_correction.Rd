@@ -34,38 +34,48 @@ Correct for DNA contamination in RNA-seq data using the 2.5 times of median
 counts per base of intergenic regions with at least one count.
 }
 \examples{
-tmp_dir <- tempdir()
 options(timeout = max(3000, getOption("timeout")))
-## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
-)
-retry_download({download.file(
-    url = count_url,
-    destfile = file.path(tmp_dir, "read_count_summary.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "read_count_summary.RData"))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+
+if (!exists("counts_summary", envir = cache_env)) {
+    ## download feaureCounts results
+    count_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "read_count_summary.RData?download=1"
+    )
+    retry_download({download.file(
+        url = count_url,
+        destfile = file.path(tmp_dir, "read_count_summary.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "read_count_summary.RData"))
+    cache_env$counts_summary <- counts_summary
+}
 
 # download the Salmon quantification results
-salmon_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "salmon_quant_summary.RData?download=1"
-)
-destfile <- file.path(tmp_dir, "salmon_quant_summary.RData")
-retry_download({download.file(
-    url = salmon_url,
-    destfile = destfile,
-    mode = "wb"
-)})
+if (!exists("salmon_quant", envir = cache_env)) {
+    salmon_url <-
+        paste0("https://zenodo.org/records/11458839/files/",
+        "salmon_quant_summary.RData?download=1")
+    destfile <- file.path(tmp_dir, "salmon_quant_summary.RData")
+    retry_download({download.file(
+        url = salmon_url,
+        destfile = destfile,
+        mode = "wb"
+    )})
 
-## load the salmon_quant object
-load(destfile)
+    ## load the salmon_quant object
+    load(destfile)
+    cache_env$salmon_quant <- salmon_quant
+}
 
 corrected_counts <- global_correction(
     intergenic_featureCounts_res =
-        counts_summary$intergenic_region,
-    salmon_res = salmon_quant
+        cache_env$counts_summary$intergenic_region,
+    salmon_res = cache_env$salmon_quant
 )
 }

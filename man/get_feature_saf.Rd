@@ -52,9 +52,9 @@ regions,intergenic regions, exonic regions, intronic regions, rRNA genes,
 mitochondrial genome, chloroplast genome (only for plants).
 }
 \examples{
+tmp_dir <- tempdir()
 gtf <- system.file("extdata", "example.gtf.gz",
                    package = "CleanUpRNAseq")
-tmp_dir <- tempdir()
 hs_ensdb_sqlite <- make_ensdb(
     gtf = gtf,
     outfile = file.path(tmp_dir, "EnsDb.hs.v110.sqlite"),

@@ -24,3 +24,11 @@ globalVariables(
     )
 )
 
+.onLoad <- function(libname, pkgname) {
+    op <- options()
+    options(cache_env = new.env(parent = emptyenv()))
+    invisible()
+}
+
+
+

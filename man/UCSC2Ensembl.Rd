@@ -35,7 +35,7 @@ version name form the UCSC name to the Ensembl name, such as from "hg38" to
 "GRCh38".
 }
 \examples{
-library("BSgenome.Hsapiens.UCSC.hg38")
+\dontshow{if (require("BSgenome.Hsapiens.UCSC.hg38")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 ucsc_BSgenome <- BSgenome.Hsapiens.UCSC.hg38
 ucsc_seqnames <-
     seqnames(ucsc_BSgenome)[!grepl("_alt|fix|hap\\\\d+",
@@ -70,5 +70,5 @@ bsgenome <- UCSC2Ensembl(
     genome_version = "GRCh38",
     seqname_alias = seqname_alias
 )
-
+\dontshow{\}) # examplesIf}
 }

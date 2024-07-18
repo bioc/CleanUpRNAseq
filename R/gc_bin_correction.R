@@ -21,8 +21,7 @@
 #' @importFrom BiocGenerics width width<- strand<-
 #' @export
 #'
-#' @examples
-#' library("BSgenome.Hsapiens.UCSC.hg38")
+#' @examplesIf require("BSgenome.Hsapiens.UCSC.hg38")
 #' ucsc_BSgenome <- BSgenome.Hsapiens.UCSC.hg38
 #' ucsc_seqnames <-
 #'     seqnames(ucsc_BSgenome)[!grepl(
@@ -199,54 +198,50 @@ calculate_region_gc <- function(region = NULL,
 #' @importFrom AnnotationFilter SeqNameFilter
 #' @export
 #'
-#' @examples
-#' if (interactive()) {
-#'     library("BSgenome.Hsapiens.UCSC.hg38")
-#'     library("EnsDb.Hsapiens.v86")
-#'     edb <- EnsDb.Hsapiens.v86
+#' @examplesIf interactive() && require("BSgenome.Hsapiens.UCSC.hg38")
+#' require("EnsDb.Hsapiens.v86")
+#' edb <- EnsDb.Hsapiens.v86
+#' ucsc_BSgenome <- BSgenome.Hsapiens.UCSC.hg38
+#' ucsc_seqnames <- seqnames(ucsc_BSgenome)[!grepl("_alt|fix|hap\\d+",
+#'                         seqnames(ucsc_BSgenome))]
 #'
-#'     ucsc_BSgenome <- BSgenome.Hsapiens.UCSC.hg38
-#'     ucsc_seqnames <-
-#'         seqnames(ucsc_BSgenome)[!grepl("_alt|fix|hap\\d+",
-#'         seqnames(ucsc_BSgenome))]
+#' ## Wierd: BSgenome.Hsapiens.UCSC.hg19 has both chrM and chrMT for
+#' ## mitochondrial
+#' ## genome. renomve chrMT.
 #'
-#'     ## Wierd: BSgenome.Hsapiens.UCSC.hg19 has both chrM and chrMT for
-#'     ## mitochondrial
-#'     ## genome. renomve chrMT.
-#'
-#'     if (all(c("chrM", "chrMT") %in% ucsc_seqnames)) {
-#'         ucsc_seqnames <- ucsc_seqnames[!ucsc_seqnames %in% "chrMT"]
-#'     }
-#'
-#'     ensembl_seqnames <- gsub(
-#'         "^chr", "",
-#'         gsub(
-#'             "chrM$", "MT",
-#'             gsub(
-#'                 "v", ".",
-#'                 gsub("_random|chr[^_]+_", "", ucsc_seqnames)
-#'             )
-#'         )
-#'     )
-#'     ## for BSgenome.Hsapiens.UCSC.hg19, scaffold seqnames start with
-#'     ## lower case, should be changed to upper case. For example,
-#'     ## change "gl000231" to "GL000231". Add a suffix ".1" to these
-#'     ## scaffold seqnames.
-#'
-#'     seqname_alias <- data.frame(ucsc = ucsc_seqnames,
-#'                                 ensembl = ensembl_seqnames)
-#'
-#'     bsgenome <- UCSC2Ensembl(
-#'         UCSC_BSgenome = ucsc_BSgenome,
-#'         genome_version = "GRCh38",
-#'         seqname_alias = seqname_alias
-#'     )
-#'     gene_contents <- calculate_gene_gc(
-#'         ensdb_sqlite = edb,
-#'         BSgenome = bsgenome,
-#'         batch_size = 2000
-#'     )
+#' if (all(c("chrM", "chrMT") %in% ucsc_seqnames)) {
+#'    ucsc_seqnames <- ucsc_seqnames[!ucsc_seqnames %in% "chrMT"]
 #' }
+#'
+#' ensembl_seqnames <- gsub(
+#'    "^chr", "",
+#'    gsub(
+#'        "chrM$", "MT",
+#'        gsub(
+#'            "v", ".",
+#'            gsub("_random|chr[^_]+_", "", ucsc_seqnames)
+#'        )
+#'     )
+#' )
+#' ## for BSgenome.Hsapiens.UCSC.hg19, scaffold seqnames start with
+#' ## lower case, should be changed to upper case. For example,
+#' ## change "gl000231" to "GL000231". Add a suffix ".1" to these
+#' ## scaffold seqnames.
+#'
+#' seqname_alias <- data.frame(ucsc = ucsc_seqnames,
+#'                             ensembl = ensembl_seqnames)
+#'
+#' bsgenome <- UCSC2Ensembl(
+#'     UCSC_BSgenome = ucsc_BSgenome,
+#'     genome_version = "GRCh38",
+#'     seqname_alias = seqname_alias
+#' )
+#' gene_contents <- calculate_gene_gc(
+#'     ensdb_sqlite = edb,
+#'     BSgenome = bsgenome,
+#'     batch_size = 2000
+#' )
+#'
 calculate_gene_gc <- function(ensdb_sqlite = NULL,
                               BSgenome = NULL,
                               batch_size = 2000) {
@@ -309,7 +304,7 @@ calculate_gene_gc <- function(ensdb_sqlite = NULL,
 #'
 #' @importFrom stats quantile loess predict
 #' @import ggplot2
-#'
+#' @noRd
 gc_bin_contamination <- function(intergenic_counts,
                                  intergenic_gc,
                                  plot = TRUE) {
@@ -433,77 +428,90 @@ gc_bin_contamination <- function(intergenic_counts,
 #'   sample (column).
 #' @export
 #'
-#' @examples
-#' if (interactive()) {
-#'    options(timeout = max(3000, getOption("timeout")))
-#'    tmp_dir <- tempdir()
-#'    ## download feaureCounts results
-#'    count_url <- paste0(
-#'        "https://zenodo.org/records/11458839/files/",
-#'        "read_count_summary.RData?download=1"
-#'    )
-#'    retry_download({download.file(
-#'        url = count_url,
-#'        destfile = file.path(tmp_dir, "read_count_summary.RData"),
-#'        mode = "wb"
-#'    )})
-#'    load(file.path(tmp_dir, "read_count_summary.RData"))
+#' @examplesIf interactive()
+#' options(timeout = max(3000, getOption("timeout")))
+#' cache_env <- getOption("cache_env")
+#' if (!exists("tmp_dir", envir = cache_env)) {
+#'     cache_env$tmp_dir <- tempdir()
+#' }
+#' tmp_dir <- cache_env$tmp_dir
 #'
-#'    # download the Salmon quantification results
-#'    salmon_url <- paste0(
-#'        "https://zenodo.org/records/11458839/files/",
-#'        "salmon_quant_summary.RData?download=1"
-#'    )
-#'    salmon_destfile <- file.path(tmp_dir, "salmon_quant_summary.RData")
-#'    retry_download({download.file(url = salmon_url,
-#'                  destfile = salmon_destfile,
-#'                  mode = "wb")})
+#' if (!exists("counts_summary", envir = cache_env)) {
+#'     ## download feaureCounts results
+#'     count_url <- paste0(
+#'         "https://zenodo.org/records/11458839/files/",
+#'         "read_count_summary.RData?download=1"
+#'     )
+#'     retry_download({download.file(
+#'         url = count_url,
+#'         destfile = file.path(tmp_dir, "read_count_summary.RData"),
+#'         mode = "wb"
+#'     )})
+#'     load(file.path(tmp_dir, "read_count_summary.RData"))
+#'     cache_env$counts_summary <- counts_summary
+#' }
+#' if (!exists("salmon_quant", envir = cache_env)) {
+#'     # download the Salmon quantification results
+#'     salmon_url <- paste0(
+#'         "https://zenodo.org/records/11458839/files/",
+#'         "salmon_quant_summary.RData?download=1"
+#'     )
+#'     salmon_destfile <- file.path(tmp_dir,
+#'         "salmon_quant_summary.RData")
+#'     retry_download({download.file(url = salmon_url,
+#'                   destfile = salmon_destfile,
+#'                   mode = "wb")})
 #'
-#'    ## load the salmon_quant object
-#'    load(salmon_destfile)
-#'
-#'    gene_gc_content_url <-
-#'        paste0(
+#'     ## load the salmon_quant object
+#'     load(salmon_destfile)
+#'     cache_env$salmon_quant <- salmon_quant
+#' }
+#' if (!exists("gene_gc", envir = cache_env)) {
+#'     gene_gc_content_url <-
+#'         paste0(
 #'            "https://zenodo.org/records/11458839/files/",
 #'            "GRCh38.gene.exon.collapsed.GC.content.RDS?download=1"
 #'        )
-#'    gene_gc_destfile <- file.path(tmp_dir,
+#'     gene_gc_destfile <- file.path(tmp_dir,
 #'                      "GRCh38.gene.exon.collapsed.GC.content.RDS")
-#'    retry_download({download.file(url = gene_gc_content_url,
-#'                  destfile = gene_gc_destfile,
-#'                  mode = "wb")})
+#'     retry_download({download.file(url = gene_gc_content_url,
+#'                   destfile = gene_gc_destfile,
+#'                   mode = "wb")})
 #'
-#'    ## load the gene_ object
-#'    gene_gc <- readRDS(gene_gc_destfile)
-#'
-#'    intergenic_gc_content_url <-
-#'        paste0(
-#'            "https://zenodo.org/records/11458839/files/",
-#'            "GRCh38.intergenic.GC.content.RDS?download=1"
-#'        )
-#'    intergenic_gc_destfile <- file.path(
-#'        tmp_dir,
-#'        "GRCh38.intergenic.GC.content.RDS"
-#'    )
-#'    retry_download({download.file(
-#'        url = intergenic_gc_content_url,
-#'        destfile = intergenic_gc_destfile,
-#'        mode = "wb"
-#'    )})
-#'
-#'    ## load the salmon_quant object
-#'    intergenic_gc <- readRDS(intergenic_gc_destfile)
-#'    gc_bias_corrected_count <-
-#'        gc_bias_correction(
-#'            salmon_res = salmon_quant,
-#'            gene_gc = gene_gc,
-#'            intergenic_counts =
-#'                counts_summary$intergenic_region$counts,
-#'            intergenic_gc = intergenic_gc,
-#'            plot = FALSE
-#'        )
+#'     ## load the gene_ object
+#'     gene_gc <- readRDS(gene_gc_destfile)
+#'     cache_env$gene_gc <- gene_gc
 #' }
-
+#' if (!exists("intergenic_gc", envir = cache_env)) {
+#'     intergenic_gc_content_url <-
+#'         paste0(
+#'                "https://zenodo.org/records/11458839/files/",
+#'                "GRCh38.intergenic.GC.content.RDS?download=1"
+#'         )
+#'     intergenic_gc_destfile <- file.path(
+#'         tmp_dir,
+#'         "GRCh38.intergenic.GC.content.RDS"
+#'     )
+#'     retry_download({download.file(
+#'         url = intergenic_gc_content_url,
+#'         destfile = intergenic_gc_destfile,
+#'         mode = "wb"
+#'     )})
+#'
+#'     ## load the salmon_quant object
+#'     intergenic_gc <- readRDS(intergenic_gc_destfile)
+#'     cache_env$intergenic_gc <- intergenic_gc
+#' }
+#' gc_bias_corrected_count <-
+#'     gc_bias_correction(
+#'         salmon_res = cache_env$salmon_quant,
+#'         gene_gc = cache_env$gene_gc,
+#'         intergenic_counts =
+#'         cache_env$counts_summary$intergenic_region$counts,
+#'         intergenic_gc = cache_env$intergenic_gc,
+#'         plot = FALSE
+#'     )
+#'
 
 gc_bias_correction <- function(salmon_res = NULL,
                                gene_gc = NULL,

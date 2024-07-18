@@ -44,6 +44,12 @@ quantitation using the real and opposite library strandedness information
 }
 \examples{
 options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+
 ## using made-up salmon quant.sf files, NOT RUN. For real situation,
 ## replace the quant.sf files and sample names with real ones.
 quant_files <-
@@ -56,25 +62,26 @@ metadata <- data.frame(
     sample_name = c("CD1AN_m2_1", "CD1AP_m2_1")
 )
 
-# download the EnsDb SQLite database: GRCh38.V110.ensdb.sqlite.zip
-tmp_dir <- tempdir()
-ensdb_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "GRCh38.V110.ensdb.sqlite.zip?download=1"
-)
-retry_download({download.file(
-    url = ensdb_url,
-    destfile = file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
-    mode = "wb"
-)})
-unzip(file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
-    exdir = tmp_dir
-)
-hs_ensdb_sqlite <- file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite")
+# download the EnsDb SQLite database
+if (!exists("hs_ensdb_sqlite", envir = cache_env)) {
+    ensdb_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "GRCh38.V110.ensdb.sqlite.zip?download=1"
+    )
+    retry_download({download.file(
+        url = ensdb_url,
+        destfile = file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
+        mode = "wb"
+    )})
+    unzip(file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
+        exdir = tmp_dir
+    )
+    hs_ensdb_sqlite <- file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite")
+    cache_env$hs_ensdb_sqlite <- hs_ensdb_sqlite
+}
 
 corrected_counts <- correct_stranded_lib(
     metadata = metadata,
-    ensdb_sqlite = hs_ensdb_sqlite
+    ensdb_sqlite = cache_env$hs_ensdb_sqlite
 )
-
 }

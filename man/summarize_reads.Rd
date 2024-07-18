@@ -95,9 +95,14 @@ rRNA genes, mitochrondrial genome, chloroplast genome (only for plants), and
 gene-level exonic regions using \code{\link[Rsubread:featureCounts]{Rsubread::featureCounts()}}.
 }
 \examples{
-if (interactive()){
-library(R.utils)
-options(timeout = max(3000, getOption("timeout")))
+\dontshow{if (interactive() && require("R.utils")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+op <- options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+
 bams <- system.file("extdata",
     "K084CD7PCD1N.srt.bam",
     package = "CleanUpRNAseq"
@@ -110,37 +115,42 @@ metadata <- data.frame(
 )
 
 # download the GTF file
-gtf_url <- paste0(
-    "https://ftp.ensembl.org/pub/release-110/gtf/",
-    "homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz"
-)
-gtf <- basename(gtf_url)
-tmp_dir <- tempdir()
-retry_download({download.file(
-    url = gtf_url,
-    destfile = file.path(tmp_dir, gtf),
-    mode = "wb"
-)})
-gunzip(file.path(tmp_dir, gtf), remove = TRUE)
+if (!exists("gtf", envir = cache_env)) {
+    gtf_url <- paste0(
+        "https://ftp.ensembl.org/pub/release-110/gtf/",
+        "homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz"
+    )
+    gtf <- basename(gtf_url)
+    retry_download({download.file(
+        url = gtf_url,
+        destfile = file.path(tmp_dir, gtf),
+        mode = "wb"
+    )})
+    gunzip(file.path(tmp_dir, gtf), remove = TRUE,
+        overwrite = TRUE)
+    cache_env$gtf <- file.path(tmp_dir, gsub(".gz$", "", gtf))
+}
 
 # download the SAF file
-saf_url <- paste0("https://zenodo.org/records/11458839/files/",
-                  "hs_saf_list.RData?download=1")
-retry_download({download.file(
-    url = saf_url,
-    destfile = file.path(tmp_dir, "hs_saf_list.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "hs_saf_list.RData"))
-
+if (!exists("saf_list", envir = cache_env)) {
+    saf_url <- paste0("https://zenodo.org/records/11458839/files/",
+                      "hs_saf_list.RData?download=1")
+    retry_download({download.file(
+        url = saf_url,
+        destfile = file.path(tmp_dir, "hs_saf_list.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "hs_saf_list.RData"))
+    cache_env$saf_list <- saf_list
+}
 counts_list <- summarize_reads(
     metadata = metadata,
     isPaired = TRUE,
     strandSpecific = 0,
     saf_list = saf_list,
-    gtf = gsub(".gz", "", file.path(tmp_dir, gtf)),
+    gtf = cache_env$gtf,
     threads = 1
 )
-}
 
+\dontshow{\}) # examplesIf}
 }

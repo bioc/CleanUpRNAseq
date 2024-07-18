@@ -31,7 +31,7 @@ A data.frame contains two columns: gc_content and width.
 Calculate GC content of genomic regions
 }
 \examples{
-library("BSgenome.Hsapiens.UCSC.hg38")
+\dontshow{if (require("BSgenome.Hsapiens.UCSC.hg38")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 ucsc_BSgenome <- BSgenome.Hsapiens.UCSC.hg38
 ucsc_seqnames <-
     seqnames(ucsc_BSgenome)[!grepl(
@@ -80,5 +80,5 @@ gc_contents <- calculate_region_gc(
     BSgenome = bsgenome,
     batch_size = 2000
 )
-
+\dontshow{\}) # examplesIf}
 }

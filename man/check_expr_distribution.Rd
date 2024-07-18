@@ -44,28 +44,38 @@ Compare expression distribution by boxplot, density plot and empirical
 cumulative distribution plot
 }
 \examples{
-library(patchwork)
-tmp_dir <- tempdir()
+\dontshow{if (require("patchwork")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    cache_env$tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+
 ## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
-)
-retry_download({download.file(
-    url = count_url,
-    destfile = file.path(tmp_dir, "read_count_summary.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "read_count_summary.RData"))
-metadata <- counts_summary$metadata
+if (!exists("counts_summary", envir = cache_env)) {
+    count_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "read_count_summary.RData?download=1"
+    )
+    retry_download({download.file(
+        url = count_url,
+        destfile = file.path(tmp_dir, "read_count_summary.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "read_count_summary.RData"))
+    cache_env$counts_summary <- counts_summary
+}
+
+metadata <- cache_env$counts_summary$metadata
 metadata$group <- gsub("CD1A\\\\(-\\\\)", "CD1A_N", metadata$group)
 metadata$group <- gsub("CD1A\\\\(\\\\+\\\\)", "CD1A_P", metadata$group)
 
 p <- check_expr_distribution(
-    counts = counts_summary$gtf$counts,
+    counts = cache_env$counts_summary$gtf$counts,
     normalization = "DESeq2",
     metadata = metadata
 )
-wrap_plots(p, ncol = 1, nrow = 3, widths = 6, heights = 8)
+patchwork::wrap_plots(p, ncol = 1, nrow = 3, widths = 6, heights = 8)
+\dontshow{\}) # examplesIf}
 }

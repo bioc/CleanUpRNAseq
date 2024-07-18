@@ -40,43 +40,52 @@ the BAM files in a genome browser, like IGV first, to get a sense of the
 data.
 }
 \examples{
-if (interactive()) {
-options(timeout = max(3000, getOption("timeout")))
-tmp_dir <- tempdir()
-## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
-)
-retry_download({download.file(
-    url = count_url,
-    destfile = file.path(tmp_dir, "read_count_summary.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "read_count_summary.RData"))
+\dontshow{if (interactive()) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+op <- options(timeout = max(3000, getOption("timeout")))
+cache_env <- getOption("cache_env")
+if (!exists("tmp_dir", envir = cache_env)) {
+    tmp_dir <- tempdir()
+}
+tmp_dir <- cache_env$tmp_dir
+if (!exists("counts_summary", envir = cache_env)) {
+    count_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "read_count_summary.RData?download=1"
+    )
+    retry_download({download.file(
+        url = count_url,
+        destfile = file.path(tmp_dir, "read_count_summary.RData"),
+        mode = "wb"
+    )})
+    load(file.path(tmp_dir, "read_count_summary.RData"))
+    cache_env$counts_summary <- counts_summary
+}
 
 # download the EnsDb SQLite database
-ensdb_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "GRCh38.V110.ensdb.sqlite.zip?download=1"
-)
-retry_download({download.file(
-    url = ensdb_url,
-    destfile = file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
-    mode = "wb"
-)})
-unzip(file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
-    exdir = tmp_dir
-)
-hs_ensdb_sqlite <- file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite")
+if (!exists("hs_ensdb_sqlite", envir = cache_env)) {
+    ensdb_url <- paste0(
+        "https://zenodo.org/records/11458839/files/",
+        "GRCh38.V110.ensdb.sqlite.zip?download=1"
+    )
+    retry_download({download.file(
+        url = ensdb_url,
+        destfile = file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
+        mode = "wb"
+    )})
+    unzip(file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite.zip"),
+        exdir = tmp_dir
+    )
+    hs_ensdb_sqlite <- file.path(tmp_dir, "GRCh38.V110.ensdb.sqlite")
+    cache_env$hs_ensdb_sqlite <- hs_ensdb_sqlite
+}
 
 unexpressed_spliced_genes <-
     get_unexpressed_spliced_genes(
-        ensdb_sqlite = hs_ensdb_sqlite,
+        ensdb_sqlite = cache_env$hs_ensdb_sqlite,
         junction_counts =
-            counts_summary$gtf$counts_junction,
+            cache_env$counts_summary$gtf$counts_junction,
         min_junction_counts = 1,
         min_samples = 1
     )
-}
+\dontshow{\}) # examplesIf}
 }

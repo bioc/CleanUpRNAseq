@@ -43,9 +43,9 @@
 #'
 #' @export
 #' @examples
+#' tmp_dir <- tempdir()
 #' gtf <- system.file("extdata", "example.gtf.gz",
 #'                    package = "CleanUpRNAseq")
-#' tmp_dir <- tempdir()
 #' hs_ensdb_sqlite <- make_ensdb(
 #'     gtf = gtf,
 #'     outfile = file.path(tmp_dir, "EnsDb.hs.v110.sqlite"),
@@ -204,10 +204,14 @@ get_feature_saf <- function(ensdb_sqlite = NULL,
 #' }
 #' @importFrom Rsubread featureCounts
 #' @export
-#' @examples
-#' if (interactive()){
-#' library(R.utils)
-#' options(timeout = max(3000, getOption("timeout")))
+#' @examplesIf interactive() && require("R.utils")
+#' op <- options(timeout = max(3000, getOption("timeout")))
+#' cache_env <- getOption("cache_env")
+#' if (!exists("tmp_dir", envir = cache_env)) {
+#'     cache_env$tmp_dir <- tempdir()
+#' }
+#' tmp_dir <- cache_env$tmp_dir
+#'
 #' bams <- system.file("extdata",
 #'     "K084CD7PCD1N.srt.bam",
 #'     package = "CleanUpRNAseq"
@@ -220,38 +224,43 @@ get_feature_saf <- function(ensdb_sqlite = NULL,
 #' )
 #'
 #' # download the GTF file
-#' gtf_url <- paste0(
-#'     "https://ftp.ensembl.org/pub/release-110/gtf/",
-#'     "homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz"
-#' )
-#' gtf <- basename(gtf_url)
-#' tmp_dir <- tempdir()
-#' retry_download({download.file(
-#'     url = gtf_url,
-#'     destfile = file.path(tmp_dir, gtf),
-#'     mode = "wb"
-#' )})
-#' gunzip(file.path(tmp_dir, gtf), remove = TRUE)
+#' if (!exists("gtf", envir = cache_env)) {
+#'     gtf_url <- paste0(
+#'         "https://ftp.ensembl.org/pub/release-110/gtf/",
+#'         "homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz"
+#'     )
+#'     gtf <- basename(gtf_url)
+#'     retry_download({download.file(
+#'         url = gtf_url,
+#'         destfile = file.path(tmp_dir, gtf),
+#'         mode = "wb"
+#'     )})
+#'     gunzip(file.path(tmp_dir, gtf), remove = TRUE,
+#'         overwrite = TRUE)
+#'     cache_env$gtf <- file.path(tmp_dir, gsub(".gz$", "", gtf))
+#' }
 #'
 #' # download the SAF file
-#' saf_url <- paste0("https://zenodo.org/records/11458839/files/",
-#'                   "hs_saf_list.RData?download=1")
-#' retry_download({download.file(
-#'     url = saf_url,
-#'     destfile = file.path(tmp_dir, "hs_saf_list.RData"),
-#'     mode = "wb"
-#' )})
-#' load(file.path(tmp_dir, "hs_saf_list.RData"))
-#'
+#' if (!exists("saf_list", envir = cache_env)) {
+#'     saf_url <- paste0("https://zenodo.org/records/11458839/files/",
+#'                       "hs_saf_list.RData?download=1")
+#'     retry_download({download.file(
+#'         url = saf_url,
+#'         destfile = file.path(tmp_dir, "hs_saf_list.RData"),
+#'         mode = "wb"
+#'     )})
+#'     load(file.path(tmp_dir, "hs_saf_list.RData"))
+#'     cache_env$saf_list <- saf_list
+#' }
 #' counts_list <- summarize_reads(
 #'     metadata = metadata,
 #'     isPaired = TRUE,
 #'     strandSpecific = 0,
 #'     saf_list = saf_list,
-#'     gtf = gsub(".gz", "", file.path(tmp_dir, gtf)),
+#'     gtf = cache_env$gtf,
 #'     threads = 1
 #' )
-#' }
+#'
 #'
 summarize_reads <- function(metadata =
                                 data.frame(
@@ -400,25 +409,33 @@ summarize_reads <- function(metadata =
 #' @importFrom reshape2 melt
 #' @import ggplot2
 #' @examples
-#' tmp_dir <- tempdir()
-#' options(timeout = max(3000, getOption("timeout")))
-#' ## download feaureCounts results
-#' count_url <- paste0(
-#'     "https://zenodo.org/records/11458839/files/",
-#'     "read_count_summary.RData?download=1"
-#' )
-#' retry_download({download.file(
-#'     url = count_url,
-#'     destfile = file.path(tmp_dir, "read_count_summary.RData"),
-#'     mode = "wb"
-#' )})
-#' load(file.path(tmp_dir, "read_count_summary.RData"))
+#' op <- options(timeout = max(3000, getOption("timeout")))
+#' cache_env <- getOption("cache_env")
+#' if (!exists("tmp_dir", envir = cache_env)) {
+#'     cache_env$tmp_dir <- tempdir()
+#' }
+#' tmp_dir <- cache_env$tmp_dir
 #'
+#' ## download feaureCounts results
+#' if (!exists("counts_summary", envir = cache_env)) {
+#'     count_url <- paste0(
+#'         "https://zenodo.org/records/11458839/files/",
+#'         "read_count_summary.RData?download=1"
+#'     )
+#'     retry_download({download.file(
+#'         url = count_url,
+#'         destfile = file.path(tmp_dir, "read_count_summary.RData"),
+#'         mode = "wb"
+#'     )})
+#'     load(file.path(tmp_dir, "read_count_summary.RData"))
+#'     cache_env$counts_summary <- counts_summary
+#' }
 #' p <- check_read_assignment_stat(
 #'     assignment_stat =
-#'         counts_summary$gtf$stat
+#'         cache_env$counts_summary$gtf$stat
 #' )
 #' p
+#'
 #'
 check_read_assignment_stat <- function(assignment_stat = NULL) {
     if (is.null(assignment_stat)) {
@@ -518,19 +535,28 @@ check_read_assignment_stat <- function(assignment_stat = NULL) {
 #' @importFrom grDevices dev.off pdf
 #' @importFrom stats cor dist median prcomp
 #' @examples
-#' tmp_dir <- tempdir()
 #' options(timeout = max(3000, getOption("timeout")))
+#' cache_env <- getOption("cache_env")
+#' if (!exists("tmp_dir", envir = cache_env)) {
+#'     cache_env$tmp_dir <- tempdir()
+#' }
+#' tmp_dir <- cache_env$tmp_dir
+#'
 #' ## download feaureCounts results
-#' count_url <- paste0(
-#'     "https://zenodo.org/records/11458839/files/",
-#'     "read_count_summary.RData?download=1"
-#' )
-#' retry_download({download.file(
-#'     url = count_url,
-#'     destfile = file.path(tmp_dir, "read_count_summary.RData"),
-#'     mode = "wb"
-#' )})
-#' load(file.path(tmp_dir, "read_count_summary.RData"))
+#' if (!exists("counts_summary", envir = cache_env)) {
+#'     count_url <- paste0(
+#'         "https://zenodo.org/records/11458839/files/",
+#'         "read_count_summary.RData?download=1"
+#'     )
+#'     retry_download({download.file(
+#'         url = count_url,
+#'         destfile = file.path(tmp_dir, "read_count_summary.RData"),
+#'         mode = "wb"
+#'     )})
+#'     load(file.path(tmp_dir, "read_count_summary.RData"))
+#'     cache_env$counts_summary <- counts_summary
+#' }
+#' counts_summary <- cache_env$counts_summary
 #' metadata <- counts_summary$metadata
 #' counts_summary$metadata <- NULL
 #' p <- check_read_distribution(
@@ -538,6 +564,7 @@ check_read_assignment_stat <- function(assignment_stat = NULL) {
 #'     metadata = metadata
 #' )
 #' p$p
+#'
 
 check_read_distribution <-
     function(featurecounts_list = NULL,
@@ -697,21 +724,29 @@ check_read_distribution <-
 #' @importFrom graphics smoothScatter
 #' @importFrom KernSmooth bkde2D
 #' @examples
-#' tmp_dir <- tempdir()
 #' options(timeout = max(3000, getOption("timeout")))
-#' ## download feaureCounts results
-#' count_url <- paste0(
-#'     "https://zenodo.org/records/11458839/files/",
-#'     "read_count_summary.RData?download=1"
-#' )
-#' retry_download({download.file(
-#'     url = count_url,
-#'     destfile = file.path(tmp_dir, "read_count_summary.RData"),
-#'     mode = "wb"
-#' )})
-#' load(file.path(tmp_dir, "read_count_summary.RData"))
+#' cache_env <- getOption("cache_env")
+#' if (!exists("tmp_dir", envir = cache_env)) {
+#'     cache_env$tmp_dir <- tempdir()
+#' }
+#' tmp_dir <- cache_env$tmp_dir
 #'
-#' check_sample_correlation(counts = counts_summary$gtf$counts)
+#' ## download feaureCounts results
+#' if (!exists("counts_summary", envir = cache_env)) {
+#'     count_url <- paste0(
+#'         "https://zenodo.org/records/11458839/files/",
+#'         "read_count_summary.RData?download=1"
+#'     )
+#'     retry_download({download.file(
+#'         url = count_url,
+#'         destfile = file.path(tmp_dir, "read_count_summary.RData"),
+#'         mode = "wb"
+#'     )})
+#'     load(file.path(tmp_dir, "read_count_summary.RData"))
+#'     cache_env$counts_summary <- counts_summary
+#' }
+#'
+#' check_sample_correlation(counts = cache_env$counts_summary$gtf$counts)
 #'
 
 check_sample_correlation <- function(counts = NULL) {
@@ -800,31 +835,40 @@ check_sample_correlation <- function(counts = NULL) {
 #' @importFrom edgeR filterByExpr cpm
 #' @importFrom qsmooth qsmooth qsmoothData
 #' @importFrom reshape2 melt
-#' @examples
-#' library(patchwork)
-#' tmp_dir <- tempdir()
+#' @examplesIf require("patchwork")
 #' options(timeout = max(3000, getOption("timeout")))
+#' cache_env <- getOption("cache_env")
+#' if (!exists("tmp_dir", envir = cache_env)) {
+#'     cache_env$tmp_dir <- tempdir()
+#' }
+#' tmp_dir <- cache_env$tmp_dir
+#'
 #' ## download feaureCounts results
-#' count_url <- paste0(
-#'     "https://zenodo.org/records/11458839/files/",
-#'     "read_count_summary.RData?download=1"
-#' )
-#' retry_download({download.file(
-#'     url = count_url,
-#'     destfile = file.path(tmp_dir, "read_count_summary.RData"),
-#'     mode = "wb"
-#' )})
-#' load(file.path(tmp_dir, "read_count_summary.RData"))
-#' metadata <- counts_summary$metadata
+#' if (!exists("counts_summary", envir = cache_env)) {
+#'     count_url <- paste0(
+#'         "https://zenodo.org/records/11458839/files/",
+#'         "read_count_summary.RData?download=1"
+#'     )
+#'     retry_download({download.file(
+#'         url = count_url,
+#'         destfile = file.path(tmp_dir, "read_count_summary.RData"),
+#'         mode = "wb"
+#'     )})
+#'     load(file.path(tmp_dir, "read_count_summary.RData"))
+#'     cache_env$counts_summary <- counts_summary
+#' }
+#'
+#' metadata <- cache_env$counts_summary$metadata
 #' metadata$group <- gsub("CD1A\\(-\\)", "CD1A_N", metadata$group)
 #' metadata$group <- gsub("CD1A\\(\\+\\)", "CD1A_P", metadata$group)
 #'
 #' p <- check_expr_distribution(
-#'     counts = counts_summary$gtf$counts,
+#'     counts = cache_env$counts_summary$gtf$counts,
 #'     normalization = "DESeq2",
 #'     metadata = metadata
 #' )
-#' wrap_plots(p, ncol = 1, nrow = 3, widths = 6, heights = 8)
+#' patchwork::wrap_plots(p, ncol = 1, nrow = 3, widths = 6, heights = 8)
+
 
 check_expr_distribution <-
     function(counts = NULL,
@@ -1091,26 +1135,35 @@ check_expr_distribution <-
 #'
 #' @export
 #' @examples
-#' tmp_dir <- tempdir()
 #' options(timeout = max(3000, getOption("timeout")))
+#' cache_env <- getOption("cache_env")
+#' if (!exists("tmp_dir", envir = cache_env)) {
+#'     cache_env$tmp_dir <- tempdir()
+#' }
+#' tmp_dir <- cache_env$tmp_dir
+#'
 #' ## download feaureCounts results
-#' count_url <- paste0(
-#'     "https://zenodo.org/records/11458839/files/",
-#'     "read_count_summary.RData?download=1"
-#' )
-#' retry_download({download.file(
-#'     url = count_url,
-#'     destfile = file.path(tmp_dir, "read_count_summary.RData"),
-#'     mode = "wb"
-#' )})
-#' load(file.path(tmp_dir, "read_count_summary.RData"))
+#' if (!exists("counts_summary", envir = cache_env)) {
+#'     count_url <- paste0(
+#'         "https://zenodo.org/records/11458839/files/",
+#'         "read_count_summary.RData?download=1"
+#'     )
+#'     retry_download({download.file(
+#'         url = count_url,
+#'         destfile = file.path(tmp_dir, "read_count_summary.RData"),
+#'         mode = "wb"
+#'     )})
+#'     load(file.path(tmp_dir, "read_count_summary.RData"))
+#'     cache_env$counts_summary <- counts_summary
+#' }
 #'
 #' p <- check_expressed_gene_percentage(
-#'     metadata = counts_summary$metadata,
-#'     counts = counts_summary$gtf$counts,
+#'     metadata = cache_env$counts_summary$metadata,
+#'     counts = cache_env$counts_summary$gtf$counts,
 #'     min_cpm = 1
 #' )
 #' p
+
 
 check_expressed_gene_percentage <-
     function(metadata =
@@ -1322,8 +1375,7 @@ check_expressed_gene_percentage <-
 #' @param granges An object of [GenomicRanges::GRanges-class]
 #' @export
 #' @return A data frame with columns: "GeneID", "Chr", "Start", "End","Strand".
-#' @examples
-#' library("GenomicRanges")
+#' @examplesIf require("GenomicRanges")
 #' gr0 <- GRanges(Rle(
 #'     c("chr2", "chr2", "chr1", "chr3"),
 #'     c(1, 3, 2, 4)
@@ -1360,18 +1412,20 @@ granges_to_saf <- function(granges) {
 #' @export
 #'
 #' @examples
+#' op <- options(timeout = max(3000, getOption("timeout")))
 #' tmp_dir <- tempdir()
-#' options(timeout = max(3000, getOption("timeout")))
+#'
 #' ## download feaureCounts results
-#' count_url <- paste0(
-#'     "https://zenodo.org/records/11458839/files/",
-#'     "read_count_summary.RData?download=1"
+#' count_url <- paste0("https://ftp.ensembl.org/pub/release-112/",
+#'                    "fasta/mus_musculus/dna/",
+#'                    "Mus_musculus.GRCm39.dna.chromosome.MT.fa.gz"
 #' )
 #' retry_download({download.file(
 #'     url = count_url,
 #'     destfile = file.path(tmp_dir, "read_count_summary.RData"),
 #'     mode = "wb"
 #' )})
+
 
 retry_download <- function(expr,
                            isError = function(x) {"try-error" %in% class(x)},
