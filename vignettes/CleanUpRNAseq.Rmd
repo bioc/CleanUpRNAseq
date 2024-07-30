@@ -33,7 +33,7 @@ vignette: |
 ```{r setup, include = FALSE}
 options(timeout = Inf)
 knitr::opts_chunk$set(
-    eval = interactive(),
+    eval = TRUE,
     message = FALSE,
     warning = FALSE,
     tidy = FALSE,
@@ -47,7 +47,7 @@ RNA-seq has become a state-of-art technology for studying gene expression
 library preparation protocols, such as rRNA-depletion based RNA-seq protocol 
 [@ONeil2013] and the [SMART-Seq](https://t.ly/sMZho) protocol, RNA-seq data 
 might suffer from genomic DNA (gDNA) contamination, which skews quantitation
-of gene expression and hinders differential gene expression analysis [@Li2022;@Verwilt2020;@Markou2021]. Some quality control tools have been  
+of gene expression and hinders differential gene expression analysis [@Li2022;@Verwilt2020;@Markou2021]. Some quality control tools have been 
 developed to check the quality of RNA-seq data at the raw read and 
 post-alignment levels, including [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/),
 RSeQC [@Wang2012], Qualimap [@GarcaAlcalde2012], RNA-SeQC/RNA-SeQC 2 
@@ -66,7 +66,7 @@ is an R/Bioconductor package and can be incorporated into automated RNA-seq
 data analysis pipeline easily. However, gDNAx only simply removes reads mapping
 to intergenic regions and introns, but not those mapping to exons, to mitigate
 gDNA contamination. Thus, gDNAx's algorithm for correcting for gDNA 
-contamination is not sophisticated.To this end, we developed the R pacakge `r Biocpkg("CleanUpRNAseq")`, which provides a full set of functions for detecting 
+contamination is not sophisticated. To this end, we developed the R pacakge `r Biocpkg("CleanUpRNAseq")`, which provides a full set of functions for detecting 
 and correcting for gDNA contamination in RNA-seq data across all computing 
 platforms.  
 
@@ -78,7 +78,7 @@ by MultiQC [@Ewels2016]. Depending on the quality of the raw data, trimming low
 quality bases and/or adpator sequences might be necessary to increase mapping
 quality and rate. Subsequently, reads are mapped to the reference genome of 
 interest using tools, such as STAR [@Dobin2012], HISAT2 [@Kim2019], 
-GMAP [@Wu2016],and Subread [@Liao2013]. The resulting alignment files in the
+GMAP [@Wu2016], and Subread [@Liao2013]. The resulting alignment files in the
 BAM format are used for post-alignment quality control, including detection of
 gDNA contamination. Meanwhile, if the RNA-seq library is *unstranded*, reads 
 are mapped to the reference transcriptome using Salmon [@Patro2017] to get 
@@ -101,13 +101,14 @@ functions, create_diagnostic_plots and correct_for_contamination, for detecting
 and correcting for gDNA contamination in RNA-seq data. As for how to use these
 wrappers, please refer to their function documentation.  
 
-```{r loadpackage, eval = TRUE}
+```{r load_package, eval = TRUE}
 suppressPackageStartupMessages({
-    library("CleanUpRNAseq")
-    #devtools::load_all("../../CleanUpRNAseq")
-    library("ggplotify")
-    library("R.utils")
-    library("patchwork")
+  library("CleanUpRNAseq")
+  #devtools::load_all("../../CleanUpRNAseq")
+  library("ggplotify")
+  library("patchwork")
+  library("ensembldb")
+  library("utils")
 })
 ```
 
@@ -117,10 +118,9 @@ load the package of choice, if available, as follows. Here, an EnsDb package
 for the human genome is loaded. It is crucial to use an EnsDb pacakge which
 represents the genome annotation file (GTF) used for RNA-seq read alignment.
 
-```{r queryannotationhub, eval=TRUE}
-## load EnsDb.Hsapiens.v86
+```{r load_ensdb, eval=FALSE}
 suppressPackageStartupMessages({
-    library("EnsDb.Hsapiens.v86")
+  library("EnsDb.Hsapiens.v86")
 })
 hs_ensdb_sqlite <- EnsDb.Hsapiens.v86
 ```
@@ -130,21 +130,20 @@ For all following steps, this option is adopted because the latest version of
 human transcriptome has been used for read mapping by STAR and Salmon to 
 quantify gene expression of the example RNA-seq data.
 
-```{r createensdb}
+```{r create_ensdb}
 options(timeout = max(3000, getOption("timeout")))
 tmp_dir <- tempdir()
 gtf <- system.file("extdata", "example.gtf.gz",
                     package = "CleanUpRNAseq")
-hs_ensdb_sqlite_toy <- make_ensdb(
-    gtf = gtf,
-    outfile = file.path(
-        tmp_dir,
-        "EnsDb.hs.v110.sqlite"
-    ),
-    organism_latin_name = "Homo_Sapiens",
-    genome_version = "GRCh38",
-    Ensembl_release_version = 110
-)
+
+hs_ensdb_sqlite <-
+  ensDbFromGtf(
+        gtf = gtf,
+        outfile = file.path(tmp_dir, "EnsDb.hs.v110.sqlite"),
+        organism = "Homo_Sapiens",
+        genomeVersion = "GRCh38",
+        version = 110
+  )
 ```
  
 ## Step 2. Prepare SAF (simplified annotation format) files 
@@ -156,11 +155,11 @@ exons, introns, intergenic regions, rRNA exons, and organelle genome(s). So
 users need to prepare SAF files for these genomic features. In addition, 
 a BAM file is needed to provide the lengths of the chromosomes/scaffolds.
 
-```{r preparesaf}
+```{r prepare_saf}
 bam_file <- system.file("extdata", "K084CD7PCD1N.srt.bam",
     package = "CleanUpRNAseq"
 )
-saf_list <- get_feature_saf(
+saf_list <- get_saf(
     ensdb_sqlite = hs_ensdb_sqlite,
     bamfile = bam_file,
     mitochondrial_genome = "MT"
@@ -177,181 +176,137 @@ samples at the gene level. Here two downsampled BAM files are used for speeding
 up the demonstration, while a precomputed R object in the .RData format is 
 used for actual downstream analysis.
 
-```{r featurecount}
- # download the GTF file
- gtf_url <- paste0(
-     "https://ftp.ensembl.org/pub/release-110/gtf/",
-     "homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz"
- )
- gtf <- basename(gtf_url)
+```{r load_data}
  tmp_dir <- tempdir()
- retry_download({download.file(
-     url = gtf_url,
-     destfile = file.path(tmp_dir, gtf),
-     mode = "wb"
- )})
+ in_dir <- system.file("extdata", package = "CleanUpRNAseq")
+ gtf.gz <- dir(in_dir, ".gtf.gz$", full.name = TRUE)
+ gtf <- file.path(tmp_dir, gsub("\\.gz", "", basename(gtf.gz)))
+ R.utils::gunzip(gtf.gz, destname= gtf,
+                 overwrite = TRUE, remove = FALSE)
 
- # download the SAF file
- saf_url <- paste0("https://zenodo.org/records/11458839/files/",
-                   "hs_saf_list.RData?download=1")
- retry_download({download.file(
-     url = saf_url,
-     destfile = file.path(tmp_dir, "hs_saf_list.RData"),
-     mode = "wb"
- )})
- load(file.path(tmp_dir, "hs_saf_list.RData"))
+ in_dir <- system.file("extdata", package = "CleanUpRNAseq")
+ BAM_file <- dir(in_dir, ".bam$", full.name = TRUE)
+ salmon_quant_file <- dir(in_dir, ".sf$", full.name = TRUE)
+ sample_name = gsub(".+/(.+?).srt.bam", "\\1", BAM_file)
+ salmon_quant_file_opposite_strand <- salmon_quant_file
+ col_data <- data.frame(sample_name = sample_name,
+                        BAM_file = BAM_file,
+                        salmon_quant_file = salmon_quant_file,
+                        salmon_quant_file_opposite_strand =
+                            salmon_quant_file_opposite_strand,
+                        group = c("CD1N", "CD1P"))
+
+ sc <- create_summarizedcounts(lib_strand = 0, colData = col_data)
  
-bams <- system.file("extdata",
-    c("K084CD7PCD1N.srt.bam", "K084CD7PCD1P.srt.bam"),
-    package = "CleanUpRNAseq"
+## featurecounts 
+ capture.output({counts_list <- summarize_reads(
+     SummarizedCounts = sc,
+     saf_list = saf_list,
+     gtf = gtf,
+     threads = 1,
+     verbose = TRUE
+ )}, file = tempfile())
+
+## load salmon quant 
+salmon_counts <- salmon_tximport(
+     SummarizedCounts = sc,
+     ensdb_sqlite = hs_ensdb_sqlite
 )
 
-metadata <- data.frame(
-    sample_name = c("CD1AN_m2_1", "CD1AP_m2_1"),
-    BAM_file = bams,
-    group = c("CD1AN", "CD1AP")
-)
-gunzip(file.path(tmp_dir, gtf), remove = TRUE, overwrite = TRUE)
-
-invisible({
-    capture.output({
-        counts_list <- summarize_reads(
-            metadata = metadata,
-            isPairedEnd = TRUE,
-            strandSpecific = 0,
-            saf_list = saf_list,
-            gtf = file.path(tmp_dir, gsub(".gz", "", gtf)),
-            threads = 1,
-            verbose = FALSE
-        )
-    })
-})
 ```
 
 ## Step 4. Check DNA contamination  
-A precomputed R object in the .RData format (*read_count_summary.RData*) 
-containing the *featureCounts* output for a full RNA-seq dataset of 8 samples
-from two treatment groups is downloaded from Dropbox. 
+Precomputed R object in the .RData format (*feature_counts_list.rda*, and
+*salmon_quant.rda*) 
+containing the *featureCounts* output and *Salmon quantification* output
+imported by using the `tximport` function for a RNA-seq dataset of 8 samples
+from two treatment groups are used for demo. GC-content for genes and
+intergenic regions (*intergenic_GC.rda*, and *gene_GC.rda*) were also
+precomputed and used for demo.
 
-```{r} 
+```{r plot_assignment_stat} 
 #| mappingstat, fig.height = 6, fig.width = 6, 
 #| fig.cap = "Read mapping status"
-## download feaureCounts results
-count_url <- paste0(
-    "https://zenodo.org/records/11458839/files/",
-    "read_count_summary.RData?download=1"
-)
-retry_download({download.file(
-    url = count_url,
-    destfile = file.path(tmp_dir, "read_count_summary.RData"),
-    mode = "wb"
-)})
-load(file.path(tmp_dir, "read_count_summary.RData"))
+data("feature_counts_list")
+data("salmon_quant")
+data("intergenic_GC")
+data("gene_GC")
 
+lib_strand <- 0
+col_data_f <- system.file("extdata", "example.colData.txt",
+                          package = "CleanUpRNAseq")
+col_data <- read.delim(col_data_f, as.is = TRUE)
+## create fake bam files
+tmp_dir <- tempdir()
+bamfiles <- gsub(".+/", "", col_data$BAM_file)
+null <- lapply(file.path(tmp_dir, bamfiles), file.create)
+## create fake quant.sf files
+quant_sf <- file.path(tmp_dir, gsub(".srt.bam$",
+                                     "quant.sf",
+                                     bamfiles))
+null <- lapply(quant_sf, file.create)
+col_data$BAM_file <- file.path(tmp_dir, bamfiles)
+col_data$salmon_quant_file <- quant_sf
 
-p_assignment_stat <-
-    check_read_assignment_stat(assignment_stat = counts_summary$gtf$stat)
+## pretend this is stranded RA=NA-seq data
+col_data$salmon_quant_file_opposite_strand <- quant_sf
+
+sc <- create_summarizedcounts(lib_strand, col_data)
+sc$set_feature_counts(feature_counts_list)
+sc$set_salmon_quant(salmon_quant)
+sc$set_salmon_quant_opposite(salmon_quant)
+
+p_assignment_stat <-plot_assignment_stat(SummarizedCounts = sc)
 wrap_plots(p_assignment_stat)
 ```
 
 ```{r} 
 #| readdistr, fig.height = 4, fig.width = 5, 
 #| fig.cap = "Read distribution over different genomic features"
+assigned_per_region <- get_region_stat(SummarizedCounts = sc)
+p <- plot_read_distr(assigned_per_region)
+p
 
-metadata <- counts_summary$metadata
-counts_summary$metadata <- NULL
-p_read_distr <- check_read_distribution(
-    featurecounts_list = counts_summary,
-    metadata = metadata
-)
-print(p_read_distr$p)
-```
-![Fig 1](./qc1_read_assign_stat.png).
-
-```{r loadsalmon}
-quant_files <- system.file("extdata",
-    c("K084CD7PCD1N.quant.sf", "K084CD7PCD1P.quant.sf"),
-    package = "CleanUpRNAseq"
-)
-
-metadata_toy <- data.frame(
-    sample_name = c("CD1AN_m2_1", "CD1AP_m2_1"),
-    salmon_quant_file = quant_files,
-    group = c("CD1AN", "CD1AP")
-)
-
-salmon_counts <- salmon_res(
-    metadata = metadata_toy,
-    ensdb_sqlite = hs_ensdb_sqlite
-)
-
-## download the full Salmon quantification data
-
-salmon_url <-
-    paste0("https://zenodo.org/records/11458839/files/",
-           "salmon_quant_summary.RData?download=1")
-destfile <- file.path(tmp_dir, "salmon_quant_summary.RData")
-retry_download({download.file(
-    url = salmon_url,
-    destfile = destfile,
-    mode = "wb"
-)})
-
-## load the salmon_quant object
-load(destfile)
 ```
 
-```{r} 
+```{r plot_sample_corr} 
 #| samplecorr, fig.height = 8, fig.width = 8,
 #| fig.cap = "Smoothed scatter plot showing pairwise sample correlation"
-
-check_sample_correlation(counts = salmon_quant$counts)
+plot_sample_corr(SummarizedCounts = sc)
 ```
-![Fig 2](./qc2_corr.png).
 
-```{r} 
+
+```{r plot_read_distr} 
 #| exprdistr, fig.height = 8, fig.width = 5, 
 #| fig.cap = "Expression distribution"
-
-metadata$group <- gsub("CD1A\\(-\\)", "CD1AN", metadata$group)
-metadata$group <- gsub("CD1A\\(\\+\\)", "CD1AP", metadata$group)
-p_expr_distr <- check_expr_distribution(
-    counts = salmon_quant$counts,
-    metadata = metadata
+p_expr_distr <- plot_expr_distr(
+    SummarizedCounts = sc,
+    normalization = "DESeq2"
 )
 wrap_plots(p_expr_distr, ncol = 1, nrow = 3)
 ```
-![Fig 3](./qc3_distribution.png).
 
-```{r}
+```{r percent_expressed_gene}
 #| exprgene, fig.height = 3, fig.width = 3.5, out.width = "80%", 
 #| fig.cap = "Percent of expressed genes"
 
-p_expr_genes <-
-    check_expressed_gene_percentage(
-        metadata = metadata,
-        counts = salmon_quant$counts,
-        min_cpm = 1,
-        abundance = salmon_quant$abundance,
-        min_tpm = 1
-    )
-print(p_expr_genes)
+plot_gene_content(
+    SummarizedCounts = sc,
+    min_cpm = 1,
+    min_tpm =1
+)
 ```
-![Fig 4](./qc4_expressed_genes.png).
 
-```{r}
+
+```{r pca_heatmap}
 #| samplesimilarity, fig.height = 5, fig.width = 10,
 #| fig.cap = "PCA score plot and heatmap showing sample similarity"
 
 ## DESeq2 exploratory analysis before correction
-pca_heatmap <- exploratory_analysis(
-    counts = salmon_quant$counts,
-    metadata = metadata
-)
-pca_heatmap$pca + as.ggplot(pca_heatmap$heatmap)
+p<- plot_pca_heatmap(SummarizedCounts = sc,
+                     silent = TRUE)
+p$pca + as.ggplot(p$heatmap)
 ```
-![Fig 5](./qc5_pca_clustering.png).
-
 
 ## Step 5. Correct for DNA contamination
 If the libraries are unstranded, `r Biocpkg("CleanUpRNAseq")` uses a median 
@@ -360,19 +315,27 @@ regions to estimate per-base DNA contamination over exons of each gene of each
 sample, and corrects for gene-level DNA contamination by subtracting 
 median_PBRC * average_gene_length from the Salmon count table of each gene of
 each sample. 
-```{r correctcontamination}
-corrected_counts <- global_correction(
-    intergenic_featureCounts_res =
-        counts_summary$intergenic_region,
-    salmon_res = salmon_quant
-)
+```{r global_correction}
+global_correction <- correct_global(SummarizedCounts = sc)
+```
+
+Alternatively, for unstranded RNA-seq data, `r Biocpkg("CleanUpRNAseq")` offers
+a correction method leveraging GC-content bias on PCR amplification.
+```{r GC_correction}
+gc_correction <-
+    correct_GC(
+        SummarizedCounts = sc,
+        gene_gc = gene_GC,
+        intergenic_gc = intergenic_GC,
+        plot = FALSE
+    )
 ```
 However, if the libraries are stranded, `r Biocpkg("CleanUpRNAseq")` considered 
 as gene-level contamination the count table resulted from quantitation using the
 opposite strandedness setting. By subtracting the DNA contamination of each gene 
 in each sample from the count table resulted from quantitation using the actual 
 strandedness setting, users can get contamination corrected count table. To this
-end, use the `correct_stranded_lib` function.
+end, use the `correct_stranded` function.
 
 
 ## Step 6. Check correction effect
@@ -381,19 +344,6 @@ expression across samples.
 
 Boxplots, density plots and empirical cumulative distribution after correction
 revealed gene expression across samples are more comparable.
-
-```{r}
-#| exprdistr2, fig.height = 8, fig.width = 6, 
-#| fig.cap = "Expression distribution after correction"
-
-metadata$group <- gsub("CD1A\\(-\\)", "CD1AN", metadata$group)
-metadata$group <- gsub("CD1A\\(\\+\\)", "CD1AP", metadata$group)
-p_expr_distr <- check_expr_distribution(
-    counts = corrected_counts,
-    metadata = metadata
-)
-wrap_plots(p_expr_distr, ncol = 1, nrow = 3)
-```
 
 # Session info
 Here is the output of `sessionInfo()` on the system on which this document was 
