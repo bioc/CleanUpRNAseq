@@ -14,8 +14,8 @@ NULL
 #' @param genome_version A character(1), specifying the genome version, such as
 #'   "GRCh38".
 #' @param seqname_alias A data frame or a tab-delimited file to a data frame,
-#'   with two columns: ucsc and ensembl for UCSC-style seqnames and Ensembl-
-#'   style seqnames, respectively.
+#'   with two columns: `ucsc` and `ensembl` for UCSC-style seqnames and
+#'   Ensembl-style seqnames, respectively.
 #'
 #' @return An object of the [BSgenome::BSgenome-class] in the Ensembl style,
 #'   such as BSgenome.Dvirilis.Ensembl.dvircaf1.
@@ -71,6 +71,8 @@ style_BSgenome <-
         if (!is(UCSC_BSgenome, "BSgenome")) {
             stop("UCSC_BSgenome is not a BSgenome!")
         }
+
+        stopifnot(length(genome_version) == 1, is.character(genome_version))
 
         if (!is.data.frame(seqname_alias)) {
             if (!file.exists(seqname_alias)) {
@@ -149,11 +151,11 @@ granges_to_saf <- function(granges) {
 }
 
 
-#' Generate SAF files for genomic features
+#' Generate a SAF file for genomic features
 #'
-#' Generate SAF (simplified annotation format) files for genomic features: genic
-#' regions,intergenic regions, exonic regions, intronic regions, rRNA genes,
-#' mitochondrial genome, chloroplast genome (only for plants).
+#' Generate a SAF (simplified annotation format) file for genomic features:
+#' genicregions, intergenic regions, exonic regions, intronic regions, rRNA
+#' genes, mitochondrial genome, and chloroplast genome (only for plants).
 #'
 #' @param ensdb_sqlite A character(1) specifying a path to an SQLite file to
 #'   store the an object of the [ensembldb::EnsDb-class] or an object of the

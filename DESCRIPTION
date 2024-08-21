@@ -42,22 +42,23 @@ Imports:
     qsmooth,
     R6,
     RColorBrewer,
-    reshape2,
     Rsamtools,
     Rsubread,
-    stats,
+    reshape2,
     SummarizedExperiment,
+    stats,
     tximport,
     utils
 Suggests: 
     BiocStyle,
     BSgenome.Hsapiens.UCSC.hg38,
     EnsDb.Hsapiens.v86,
-    R.utils,
     ggplotify,
     knitr,
     patchwork,
-    rmarkdown
+    R.utils,
+    rmarkdown,
+    testthat (>= 3.0.0)
 VignetteBuilder: 
     knitr
 biocViews: QualityControl, Sequencing, GeneExpression
@@ -72,3 +73,4 @@ Collate:
     'check_gDNA.R'
     'correction_methods.R'
     'data.R'
+Config/testthat/edition: 3

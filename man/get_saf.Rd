@@ -2,7 +2,7 @@
 % Please edit documentation in R/misc.R
 \name{get_saf}
 \alias{get_saf}
-\title{Generate SAF files for genomic features}
+\title{Generate a SAF file for genomic features}
 \usage{
 get_saf(
   ensdb_sqlite = NULL,
@@ -47,9 +47,9 @@ chloroplast, plnat only}
 }
 }
 \description{
-Generate SAF (simplified annotation format) files for genomic features: genic
-regions,intergenic regions, exonic regions, intronic regions, rRNA genes,
-mitochondrial genome, chloroplast genome (only for plants).
+Generate a SAF (simplified annotation format) file for genomic features:
+genicregions, intergenic regions, exonic regions, intronic regions, rRNA
+genes, mitochondrial genome, and chloroplast genome (only for plants).
 }
 \examples{
 require("ensembldb")

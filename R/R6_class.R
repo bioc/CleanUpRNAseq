@@ -173,6 +173,12 @@ SummarizedCounts <- R6::R6Class("SummarizedCounts",
     initialize = function(lib_strand, col_data) {
         validate(lib_strand, col_data)
 
+        ## convert "group and batch to factor
+        if ("batch" %in% colnames(col_data)) {
+            col_data$batch <- as.factor(col_data$batch)
+        }
+        col_data$group <- as.factor(col_data$group)
+
         self$lib_strand <- lib_strand
         self$col_data <- col_data
 
@@ -560,7 +566,7 @@ validate <- function(lib_strand, col_data) {
         stopifnot(is.data.frame(col_data),
                   all(col_names[seq_len(5)] %in% colnames(col_data)))
         stopifnot(file.exists(col_data$salmon_quant_file_opposite_strand))
-        if (any(duplicated(col_data$salmon_quant_fileopposite_strand))) {
+        if (any(duplicated(col_data$salmon_quant_file_opposite_strand))) {
             stop("Some salmon_quant_file_opposite_strand are not unique")
         }
     }
@@ -578,6 +584,12 @@ validate <- function(lib_strand, col_data) {
         any(duplicated(col_data$sample_name))) {
         stop("Some BAM files, salmon_quant_file, ",
         "or sample names are not unique")
+    }
+    stopifnot(nlevels(as.factor(col_data$group)) > 1)
+
+    if ("batch" %in% colnames(col_data) &&
+        nlevels(as.factor(col_data$batch)) < 2) {
+        stop("Only one batch exists, so delete it from the colData")
     }
 }
 

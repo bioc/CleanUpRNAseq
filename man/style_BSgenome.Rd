@@ -19,8 +19,8 @@ style, such as BSgenome.Hsapiens.UCSC.hg38.}
 "GRCh38".}
 
 \item{seqname_alias}{A data frame or a tab-delimited file to a data frame,
-with two columns: ucsc and ensembl for UCSC-style seqnames and Ensembl-
-style seqnames, respectively.}
+with two columns: \code{ucsc} and \code{ensembl} for UCSC-style seqnames and
+Ensembl-style seqnames, respectively.}
 }
 \value{
 An object of the \link[BSgenome:BSgenome-class]{BSgenome::BSgenome} in the Ensembl style,

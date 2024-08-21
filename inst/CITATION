@@ -1,0 +1,11 @@
+bibentry(
+  bibtype  = "Article",
+  title    = "CleanUpRNAseq: An R/Bioconductor Package for Detecting and Correcting DNA Contamination in RNA-Seq Data",
+  author   = " Haibo Liu, Kai Hu, Kevin O’Connor, Michelle A. Kelliher, Lihua Julie Zhu",
+  journal  = "BioTech",
+  year     = 2024,
+  volume   = 13,
+  number   = 3,
+  pages    = 30,
+  doi      = "10.3390/biotech13030030 "
+)
