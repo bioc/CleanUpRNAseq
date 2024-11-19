@@ -46,5 +46,5 @@ sc$set_salmon_quant(salmon_quant)
 sc$set_salmon_quant_opposite(salmon_quant)
 
 assigned_per_region <- get_region_stat(SummarizedCounts = sc)
-
+assigned_per_region
 }

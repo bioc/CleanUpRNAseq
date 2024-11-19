@@ -1,6 +1,5 @@
 ---
-title: "CleanUpRNAseq: detecting and correcting for gDNA contamination in
-        RNA-seq data"
+title: "CleanUpRNAseq: detecting and correcting gDNA contamination in RNA-seq data"
 author:
 - name: Haibo Liu
   affiliation: MCCB, UMass Chan Medical School, Worcester, USA
