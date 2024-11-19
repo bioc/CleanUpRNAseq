@@ -151,9 +151,9 @@ plot_assignment_stat <- function(SummarizedCounts = NULL) {
 #' sc$set_salmon_quant_opposite(salmon_quant)
 #'
 #' assigned_per_region <- get_region_stat(SummarizedCounts = sc)
-#'
+#' assigned_per_region
 
-get_region_stat <-function(SummarizedCounts = NULL) {
+get_region_stat <- function(SummarizedCounts = NULL) {
     stopifnot(is(SummarizedCounts, "SummarizedCounts"))
     featurecounts_list <- SummarizedCounts$get_feature_counts()
     col_data <- SummarizedCounts$col_data
@@ -196,26 +196,11 @@ get_region_stat <-function(SummarizedCounts = NULL) {
     assigned_per_region$assigned_percent <-
         assigned_per_region$assigned_count / total_mapped_frags * 100
 
-    levels <- c(
-        "gene",
-        "exon",
-        "intronic_region",
-        "intergenic_region",
-        "rRNA",
-        "mitochondrion"
-    )
-    labels <- c(
-        "Gene",
-        "Exon",
-        "Intron",
-        "Intergenic region",
-        "rRNA",
-        "Mitochondrion"
-    )
-    if (length(unique(assigned_per_region$region_type)) == 7) {
-        levels <- c(levels, "chloroplast")
-        labels <- c(labels, "Chloroplast")
-    }
+    levels <- names(featurecounts_list)[kept]
+    labels <- gsub("_", " ", levels)
+    labels <- paste0(toupper(gsub("(^.).+", "\\1", labels)),
+                     gsub("^.(.+)", "\\1", labels))
+    labels <- ifelse(labels == "RRNA", "rRNA", labels)
     assigned_per_region$region_type <-
         factor(assigned_per_region$region_type,
                levels = levels,

@@ -267,15 +267,25 @@ get_saf <- function(ensdb_sqlite = NULL,
 
     ## rRNA transcripts
     rrna_GR <- exons(ensdb, filter = GeneBiotypeFilter("rRNA"))
-    rrna_saf <- granges_to_saf(rrna_GR)
 
-    saf_list <- list(
-        gene = gene_saf,
-        exon = exon_saf,
-        intergenic_region = intergenic_saf,
-        intronic_region = intronic_saf,
-        rRNA = rrna_saf
-    )
+    ## in case no rRNA annotation in the GTF
+    if (length(rrna_GR) > 0) {
+        rrna_saf <- granges_to_saf(rrna_GR)
+        saf_list <- list(
+            gene = gene_saf,
+            exon = exon_saf,
+            intergenic_region = intergenic_saf,
+            intronic_region = intronic_saf,
+            rRNA = rrna_saf
+        )
+    } else {
+        saf_list <- list(
+            gene = gene_saf,
+            exon = exon_saf,
+            intergenic_region = intergenic_saf
+        )
+    }
+
     if (any(mitochondrial_genome %in% rownames(genome_info))) {
         mitochondrion <- genome_GR[as.character(seqnames(genome_GR)) %in%
                                        mitochondrial_genome]
@@ -392,19 +402,16 @@ summarize_reads <- function(SummarizedCounts = NULL,
     stopifnot(is(SummarizedCounts, "SummarizedCounts"))
     if (length(saf_list) < 5 ||
         any(
-            !c(
-                "gene",
+            !c("gene",
                 "exon",
                 "intergenic_region",
-                "intronic_region",
-                "rRNA",
-                "mitochondrion"
+                "intronic_region"
             ) %in%
             names(saf_list)
         )) {
         stop(
             "A valid SAF list for gene, exon, intergenic region,",
-            "intronic region, rRNA genes, and mitochondrion is needed "
+            "and intronic region is needed"
         )
     }
 
