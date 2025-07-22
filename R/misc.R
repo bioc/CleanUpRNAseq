@@ -20,7 +20,7 @@ NULL
 #' @return An object of the [BSgenome::BSgenome-class] in the Ensembl style,
 #'   such as BSgenome.Dvirilis.Ensembl.dvircaf1.
 #' @importFrom  stats complete.cases setNames
-#' @importFrom GenomeInfoDb seqnames seqnames<-
+#' @importFrom Seqinfo seqnames seqnames<-
 #' @export
 #'
 #' @examplesIf require("BSgenome.Hsapiens.UCSC.hg38")
@@ -176,7 +176,7 @@ granges_to_saf <- function(granges) {
 #' @importFrom GenomicRanges reduce setdiff
 #' @importFrom methods as
 #' @importFrom Rsamtools seqinfo BamFile
-#' @importFrom GenomeInfoDb seqnames
+#' @importFrom Seqinfo seqnames
 #'
 #' @return A list of data frames containing SAF for genomic features:
 #'   genic regions, intergenic regions, exonic regions, intronic regions,
@@ -690,7 +690,7 @@ salmon_tximport <- function(SummarizedCounts = NULL,
 #'   }
 #' @importFrom Biostrings letterFrequency
 #' @importFrom BSgenome getSeq
-#' @importFrom GenomeInfoDb seqnames
+#' @importFrom Seqinfo seqnames
 #' @importFrom BiocGenerics width width<- strand<-
 #' @export
 #'
